@@ -67,47 +67,201 @@ The development followed these key stages:
 * **`README.md`**: This file.
 
 
-## Prerequisites to Run the Application
-
-*   **Python:** Version 3.8 or newer recommended. (`pip` should be included).
-*   **Git:** For cloning the repository.
-
 ## Setup and Installation to Run the Application
 
 *(These steps assume you only want to run the final application, not regenerate data or retrain the model)*
 
-1.  **Clone the Repository:**
+**Prerequisites:**
+
+*   **Python:** Version 3.8 or newer is recommended. Verify with `python --version` or `python3 --version` in your terminal.
+*   **Git:** For cloning the repository.
+
+**Choose Your Operating System and Follow the Corresponding Instructions:**
+
+**A. Windows - Using Command Prompt**
+
+1.  **Open Command Prompt:** Search for "Command Prompt" in the Windows Start Menu and open it.
+
+2.  **Navigate to Your Desktop (or Desired Location):**
+    ```bash
+    cd Desktop
+    ```
+
+3.  **Clone the GitHub Repository:**
     ```bash
     git clone https://github.com/asmmahfuz/Advanced-EV-Charging-Load-Simulation-Prediction.git
-    cd ev_simulation_app
     ```
 
-2.  **Create and Activate a Virtual Environment:**
-    *   Create: `python -m venv venv` *(Use `python3` if needed)*
-    *   Activate:
-        *   Windows: `.\venv\Scripts\activate`
-        *   macOS/Linux: `source venv/bin/activate`
-    *   *(Confirm `(venv)` appears in your prompt)*
-
-3.  **Install Dependencies:**
+4.  **Change Directory into the Project Folder:**
     ```bash
-    pip install -r requirements.txt
+    cd Advanced-EV-Charging-Load-Simulation-Prediction
     ```
-    *(This installs Flask, Pandas, NumPy, Scikit-learn, Joblib, Openpyxl)*
 
-## Running the Application
+5.  **Create and Activate Virtual Environment:**
+    ```bash
+    python -m venv venv
+    venv\Scripts\activate
+    ```
+    *   You should see `(venv)` at the beginning of your command prompt.
 
-1.  **Ensure Virtual Environment is Active:** Check for `(venv)` in your terminal prompt.
-2.  **Run the Flask Server:** From the project's root directory:
+6.  **Install Python Libraries Manually (One by One):**
+    *   **Important:** Ensure `(venv)` is active. Run these commands *one at a time*, and wait for each to complete successfully before proceeding.
+        ```bash
+        pip install Flask
+        pip install pandas
+        pip install numpy
+        pip install scikit-learn
+        pip install joblib
+        pip install openpyxl
+        ```
+
+7.  **Run the Application:**
     ```bash
     python app.py
     ```
-3.  **Wait for Server Startup:** Look for output indicating the server is running, typically on `http://127.0.0.1:5000`.
-4.  **Access in Browser:** Open your web browser and go to `http://127.0.0.1:5000/`.
 
-## Stopping the Application
+8.  **Wait for Server Startup:** Look for output indicating the server is running, typically on `http://127.0.0.1:5000`.
 
-*   Press `Ctrl + C` in the terminal where the server is running.
+9.  **Access in Browser:** Open your web browser and go to `http://127.0.0.1:5000/`.
+
+10. **Stopping the Application:** Press `Ctrl + C` in the terminal where the server is running.
+
+
+**B. Windows - Using PowerShell**
+
+1.  **Open PowerShell:** Search for "PowerShell" in the Windows Start Menu and open it.
+
+2.  **Navigate to Your Desktop (or Desired Location):**
+    ```powershell
+    cd Desktop
+    ```
+
+3.  **Clone the GitHub Repository:**
+    ```powershell
+    git clone https://github.com/asmmahfuz/Advanced-EV-Charging-Load-Simulation-Prediction.git
+    ```
+
+4.  **Change Directory into the Project Folder:**
+    ```powershell
+    cd Advanced-EV-Charging-Load-Simulation-Prediction
+    ```
+
+5.  **Create and Activate Virtual Environment:**
+    ```powershell
+    python -m venv venv
+    .\venv\Scripts\activate
+    ```
+    *   You should see `(venv)` at the beginning of your PowerShell prompt.
+
+6.  **Install Python Libraries Manually (One by One):**
+    *   **Important:** Ensure `(venv)` is active. Run these commands *one at a time*, and wait for each to complete successfully before proceeding.
+        ```powershell
+        pip install Flask
+        pip install pandas
+        pip install numpy
+        pip install scikit-learn
+        pip install joblib
+        pip install openpyxl
+        ```
+
+7.  **Run the Application:**
+    ```powershell
+    python app.py
+    ```
+
+8.  **Wait for Server Startup:** Look for output indicating the server is running, typically on `http://127.0.0.1:5000`.
+
+9.  **Access in Browser:** Open your web browser and go to `http://127.0.0.1:5000/`.
+
+10. **Stopping the Application:** Press `Ctrl + C` in the terminal where the server is running.
+
+**C. Using VS Code Integrated Terminal (Windows or macOS/Linux)**
+
+1.  **Open Your Project Folder in VS Code:** Open the `Advanced-EV-Charging-Load-Simulation-Prediction` folder.
+
+2.  **Open Integrated Terminal:** Go to `Terminal > New Terminal`. VS Code will open a terminal panel within VS Code, usually at the bottom.
+
+3.  **Create and Activate Virtual Environment:**
+    *   In the VS Code terminal:
+        ```bash
+        python -m venv venv
+        ```
+    *   **Activate the virtual environment:** The activation command depends on your default shell in VS Code (check the top-right corner of the terminal panel - it might say PowerShell, Command Prompt, Bash, Zsh, etc.). Use the appropriate command:
+        *   **PowerShell:** `.\venv\Scripts\activate`
+        *   **Command Prompt:** `venv\Scripts\activate`
+        *   **Bash/Zsh:** `source venv/bin/activate`
+    *   You should see `(venv)` at the beginning of the terminal prompt.
+    *   **Important: Select Python Interpreter:** VS Code might prompt you to select a Python interpreter. If it does, choose the one that is inside your `venv` folder (it will likely be something like `./venv/Scripts/python` or `./venv/bin/python`). If not prompted, you can manually select it: Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`), type "Python: Select Interpreter", and choose the `venv` interpreter.
+
+4.  **Install Python Libraries Manually (One by One):**
+    *   **Important:** Ensure `(venv)` is active and the correct Python interpreter is selected in VS Code. Run these commands *one at a time*:
+        ```bash
+        pip install Flask
+        pip install pandas
+        pip install numpy
+        pip install scikit-learn
+        pip install joblib
+        pip install openpyxl
+        ```
+
+5.  **Run the Application:**
+    ```bash
+    python app.py
+    ```
+
+6.  **Wait for Server Startup:** Look for output indicating the server is running, typically on `http://127.0.0.1:5000`.
+
+7.  **Access in Browser:** Open your web browser and go to `http://127.0.0.1:5000/`.
+
+8. **Stopping the Application:** Press `Ctrl + C` in the terminal where the server is running.
+
+**D. macOS or Linux Terminal (Bash/Zsh)**
+
+1.  **Open Terminal:** Open the Terminal application on your macOS or Linux system.
+
+2.  **Navigate to Your Desktop (or Desired Location):**
+    ```bash
+    cd Desktop
+    ```
+
+3.  **Clone the GitHub Repository:**
+    ```bash
+    git clone https://github.com/asmmahfuz/Advanced-EV-Charging-Load-Simulation-Prediction.git
+    ```
+
+4.  **Change Directory into the Project Folder:**
+    ```bash
+    cd Advanced-EV-Charging-Load-Simulation-Prediction
+    ```
+
+5.  **Create and Activate Virtual Environment:**
+    ```bash
+    python3 -m venv venv  # Use python3 on macOS/Linux
+    source venv/bin/activate
+    ```
+    *   You should see `(venv)` at the beginning of your terminal prompt.
+
+6.  **Install Python Libraries Manually (One by One):**
+    *   **Important:** Ensure `(venv)` is active. Run these commands *one at a time*:
+        ```bash
+        pip install Flask
+        pip install pandas
+        pip install numpy
+        pip install scikit-learn
+        pip install joblib
+        pip install openpyxl
+        ```
+
+7.  **Run the Application:**
+    ```bash
+    python3 app.py  # Use python3 on macOS/Linux if that's your Python 3 command
+    ```
+
+8.  **Wait for Server Startup:** Look for output indicating the server is running, typically on `http://127.0.0.1:5000`.
+
+9.  **Access in Browser:** Open your web browser and go to `http://127.0.0.1:5000/`.
+
+10. **Stopping the Application:** Press `Ctrl + C` in the terminal where the server is running.
 
 ## Note on Re-generating Data / Re-training Model
 
