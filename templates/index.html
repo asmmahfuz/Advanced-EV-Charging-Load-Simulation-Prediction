@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced EV Charging Load Simulation</title>
+    <!-- Ensure Chart.js is loaded -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Ensure Font Awesome is loaded -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        /* --- Theme Variables --- */
+        :root { /* Dark Theme (Default) */
+            --bg-primary: #1d1d1f;
+            --bg-secondary: #2c2c2e;
+            --bg-tertiary: #3a3a3c;
+            --bg-modal: rgba(44, 44, 46, 0.95);
+            --text-primary: #f5f5f7;
+            --text-secondary: #a0a0a5;
+            --text-accent: #0a84ff;
+            --border-color: #4a4a4e;
+            --accent-primary: #0a84ff;
+            --accent-hover: #409cff;
+            --disabled-bg: #3a3a3c;
+            --disabled-text: #7a7a7e;
+            --info-icon-color: #7a7a7e;
+            --info-icon-hover: #a0a0a5;
+            --status-success-bg: rgba(52, 199, 89, 0.2);
+            --status-success-text: #34c759;
+            --status-error-bg: rgba(255, 69, 58, 0.2);
+            --status-error-text: #ff453a;
+            --status-info-bg: rgba(10, 132, 255, 0.15);
+            --status-info-text: #409cff;
+            --chart-grid: rgba(170, 170, 170, 0.1);
+            --chart-label: var(--text-secondary);
+            --chart-tooltip-bg: rgba(30, 30, 30, 0.9);
+            --chart-colors: '#0a84ff', '#ff9f40', '#34c759', '#ff453a', '#af52de', '#5ac8fa', '#ffcc00';
+            color-scheme: dark; /* Hint for browser UI like scrollbars */
+        }
+
+        html[data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f2f2f7;
+            --bg-tertiary: #e5e5ea;
+            --bg-modal: rgba(242, 242, 247, 0.95);
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-accent: #007aff;
+            --border-color: #d1d1d6;
+            --accent-primary: #007aff;
+            --accent-hover: #3395ff;
+            --disabled-bg: #e5e5ea;
+            --disabled-text: #a0a0a5;
+            --info-icon-color: #a0a0a5;
+            --info-icon-hover: #6e6e73;
+            --status-success-bg: rgba(52, 199, 89, 0.15);
+            --status-error-bg: rgba(255, 59, 48, 0.15);
+            --status-info-bg: rgba(0, 122, 255, 0.1);
+            --chart-grid: rgba(60, 60, 67, 0.15);
+            --chart-label: var(--text-secondary);
+            --chart-tooltip-bg: rgba(250, 250, 250, 0.9);
+             --chart-colors: '#007aff', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#5ac8fa', '#ffcc00';
+             color-scheme: light; /* Hint for browser UI */
+        }
+
+        /* --- Base Styles & Layout (Mostly unchanged, ensure transitions) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scrollbar-color: var(--bg-tertiary) var(--bg-secondary); transition: background-color 0.2s ease, color 0.2s ease; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: var(--bg-primary); color: var(--text-primary);
+            min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column;
+            font-size: 14px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.2s ease, color 0.2s ease; /* Apply transition to body */
+        }
+
+        /* Header */
+        header {
+            background-color: var(--bg-secondary); padding: 10px 25px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 55px;
+            position: sticky; top: 0; z-index: 100; transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        header h1 { font-size: 1.2em; color: var(--text-primary); font-weight: 600; }
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        header button {
+            padding: 8px 16px; background-color: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.88em; font-weight: 500; transition: background-color 0.2s ease, opacity 0.2s ease;
+        }
+        header button:hover:not(:disabled) { background-color: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); } /* Added subtle hover */
+        header button:disabled { background-color: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; opacity: 0.7;}
+        #theme-selector {
+            padding: 6px 8px; background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);
+            border-radius: 5px; font-size: 0.85em; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #theme-selector:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.3); }
+
+        /* Main Application Area */
+        #app { display: flex; flex-grow: 1; padding: 15px; gap: 15px; }
+
+        /* Layout Panels */
+        .panel {
+            background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 15px; display: flex; flex-direction: column; overflow-y: auto;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            max-height: calc(100vh - 85px); /* Adjusted height constraint */
+        }
+        .panel::-webkit-scrollbar { width: 6px; }
+        .panel::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 3px;}
+        .panel::-webkit-scrollbar-thumb { background-color: var(--bg-tertiary); border-radius: 3px; }
+        .panel::-webkit-scrollbar-thumb:hover { background-color: #555; }
+
+        #left-panel { flex: 1.2; min-width: 280px; }
+        #middle-panel { flex: 1.3; min-width: 300px; }
+        #right-panel { flex: 2.5; min-width: 450px; }
+
+        /* Panel Sections */
+        .panel-section { margin-bottom: 18px; }
+        .panel-section:last-child { margin-bottom: 0; }
+        .panel-section h3 {
+            font-size: 0.9em; color: var(--text-secondary); margin-bottom: 12px; border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Info Icons */
+        .info-icon { color: var(--info-icon-color); cursor: pointer; font-size: 0.9em; transition: color 0.2s ease; }
+        .info-icon:hover { color: var(--info-icon-hover); transform: scale(1.1); } /* Added hover effect */
+
+        /* Input Groups & Elements */
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: inline-block; font-weight: 500; margin-bottom: 6px; font-size: 0.9em; color: var(--text-secondary); cursor: default; margin-right: 5px; }
+        .input-group label[for] { cursor: pointer; }
+        .input-group input[type="number"], .input-group input[type="range"], .input-group select {
+            width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 0.9em;
+            background-color: var(--bg-tertiary); color: var(--text-primary); transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+        }
+        .input-group input[type="number"]:focus, .input-group select:focus { border-color: var(--accent-primary); outline: none; box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.3); }
+        .input-group input[type="range"] { padding: 0; height: 4px; cursor: pointer; appearance: none; -webkit-appearance: none; background: var(--border-color); border-radius: 2px; border: none; outline: none; }
+        .input-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--accent-primary); border-radius: 50%; cursor: pointer; border: 2px solid var(--bg-secondary); transition: background-color 0.2s ease; margin-top: -6px; }
+        .input-group input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: var(--accent-primary); border-radius: 50%; cursor: pointer; border: none; transition: background-color 0.2s ease; }
+        .input-group input[type="range"]:hover::-webkit-slider-thumb { background-color: var(--accent-hover); }
+        .input-group input[type="range"]:hover::-moz-range-thumb { background-color: var(--accent-hover); }
+        .input-group .value-display { font-size: 0.8em; color: var(--text-secondary); text-align: right; margin-top: 4px; height: 1em; }
+
+        /* Specific Input Styles */
+        #bus-selection-group select { height: 85px; }
+        .radio-group label, .checkbox-group div label { display: block; margin-bottom: 8px; font-weight: normal; font-size: 0.9em; color: var(--text-primary); cursor: pointer; position: relative; padding-left: 24px; line-height: 1.4;}
+        .checkbox-group div label { display: inline-block; margin-right: 15px; }
+        .radio-group input[type="radio"], .checkbox-group input[type="checkbox"] { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+        .radio-group label::before, .checkbox-group div label::before { content: ""; position: absolute; left: 0; top: 3px; height: 16px; width: 16px; border: 1px solid var(--border-color); background-color: var(--bg-tertiary); border-radius: 4px; transition: background-color 0.2s ease, border-color 0.2s ease; }
+        .radio-group label::before { border-radius: 50%; }
+        .radio-group input[type="radio"]:checked + label::before, .checkbox-group input[type="checkbox"]:checked + label::before { background-color: var(--accent-primary); border-color: var(--accent-primary); }
+        .radio-group label::after, .checkbox-group div label::after { content: ""; position: absolute; display: none; }
+        .radio-group input[type="radio"]:checked + label::after { display: block; top: 7px; left: 4px; width: 8px; height: 8px; border-radius: 50%; background: white; }
+        .checkbox-group input[type="checkbox"]:checked + label::after { display: block; left: 6px; top: 4px; width: 4px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+        /* Disabled Styling */
+        .input-group.disabled-input label, .input-group label.disabled-label, input:disabled + label, input:disabled ~ .info-icon { color: var(--disabled-text) !important; cursor: not-allowed !important; opacity: 0.7; }
+        .input-group.disabled-input input, .input-group.disabled-input select, input:disabled, select:disabled { background-color: var(--disabled-bg) !important; border-color: var(--border-color) !important; color: var(--disabled-text) !important; cursor: not-allowed !important; opacity: 0.7; }
+        input:disabled + label::before { background-color: var(--disabled-bg) !important; border-color: var(--border-color) !important; opacity: 0.7; }
+        .hidden { display: none !important; }
+
+        /* Output Area Styles */
+        .chart-container { position: relative; width: 100%; margin-bottom: 15px; background-color: var(--bg-primary); padding: 5px; border-radius: 4px; transition: background-color 0.2s ease; }
+        #chart-container { height: 210px; }
+        #concurrent-chart-container { height: 130px; }
+        #soc-chart-container { height: 130px; }
+        #ldc-chart-container { height: 130px; }
+        #cap-dist-chart-container { height: 120px; }
+
+        #summary-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .metric-box { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; text-align: center; transition: background-color 0.2s ease, border-color 0.2s ease; }
+        .metric-box .metric-label { font-size: 0.75em; color: var(--text-secondary); display: block; margin-bottom: 4px; text-transform: uppercase; line-height: 1.2; height: 2em; display: flex; align-items: center; justify-content: center; gap: 4px;}
+        .metric-box .metric-value { font-size: 1.1em; font-weight: 600; color: var(--text-primary); }
+        .metric-box .metric-note { font-size: 0.7em; color: var(--text-accent); display: block; margin-top: 3px; height: 1em;}
+
+        #fleet-stats-box { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; font-size: 0.85em; margin-bottom: 10px; transition: background-color 0.2s ease, border-color 0.2s ease;}
+        #fleet-stats-box p { margin-bottom: 6px; color: var(--text-secondary);}
+        #fleet-stats-box span { font-weight: 600; color: var(--text-primary); }
+
+        #per-bus-peak-table { font-size: 0.85em; width: 100%; border-collapse: collapse; margin-top: 8px; }
+        #per-bus-peak-table th, #per-bus-peak-table td { border: 1px solid var(--border-color); padding: 6px 8px; text-align: left; transition: border-color 0.2s ease;}
+        #per-bus-peak-table th { background-color: var(--bg-tertiary); font-weight: 600; color: var(--text-secondary); font-size: 0.9em; transition: background-color 0.2s ease;}
+        #per-bus-peak-table td { color: var(--text-primary); }
+        #per-bus-peak-table tr:nth-child(even) td { background-color: rgba(0,0,0,0.05); }
+        html[data-theme="light"] #per-bus-peak-table tr:nth-child(even) td { background-color: rgba(0,0,0,0.03); }
+        #per-bus-table-container { overflow-y: auto; max-height: 160px;}
+
+        /* Status Display */
+        #status-display { padding: 8px 15px; margin-top: 10px; border-radius: 5px; font-size: 0.85em; text-align: center; display: none; border: 1px solid transparent; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;}
+        #status-display.success { background-color: var(--status-success-bg); color: var(--status-success-text); border-color: var(--status-success-text);}
+        #status-display.error { background-color: var(--status-error-bg); color: var(--status-error-text); border-color: var(--status-error-text);}
+        #status-display.info { background-color: var(--status-info-bg); color: var(--status-info-text); border-color: var(--status-info-text);}
+
+        /* Interpretation Area */
+        #interpretation-area {
+            margin-top: 15px; padding: 12px; border: 1px dashed var(--border-color); border-radius: 6px;
+            background-color: rgba(0,0,0,0.05); font-size: 0.88em; line-height: 1.5; color: var(--text-secondary);
+            max-height: 150px; overflow-y: auto; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+        html[data-theme="light"] #interpretation-area { background-color: rgba(0,0,0,0.03); }
+        #interpretation-area p { margin-bottom: 8px; }
+        #interpretation-area strong { color: var(--text-primary); font-weight: 600; }
+
+        /* Info Modal */
+        #info-modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            align-items: center; justify-content: center;
+        }
+        #info-modal-content {
+            background-color: var(--bg-modal); margin: auto; padding: 25px; border: 1px solid var(--border-color);
+            border-radius: 10px; width: 90%; max-width: 550px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #info-modal-close {
+            color: var(--text-secondary); position: absolute; top: 10px; right: 15px;
+            font-size: 1.8em; font-weight: bold; cursor: pointer; line-height: 1;
+        }
+        #info-modal-close:hover, #info-modal-close:focus { color: var(--text-primary); text-decoration: none; }
+        #info-modal h2 { margin-top: 0; margin-bottom: 15px; color: var(--text-primary); font-size: 1.3em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        #info-modal p { margin-bottom: 10px; line-height: 1.6; color: var(--text-secondary); font-size: 0.95em; }
+        #info-modal p strong { color: var(--text-accent); font-weight: 600; }
+
+        /* Chart Canvas Styling */
+        canvas { background-color: transparent; } /* Ensure canvas bg is transparent */
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>EV Charging Load Simulation</h1>
+        <div class="header-controls">
+             <select id="theme-selector" title="Change UI Theme">
+                 <!-- Removed Device theme -->
+                 <option value="dark">Dark Mode</option>
+                 <option value="light">Light Mode</option>
+                 <!-- Removed Glass theme -->
+             </select>
+            <button id="run-simulation-btn">Run Simulation</button>
+        </div>
+    </header>
+
+    <div id="app">
+        <!-- Left Panel: Fleet & Timing (Add Font Awesome icons) -->
+        <div id="left-panel" class="panel">
+            <div class="panel-section">
+                <h3>Fleet Configuration <i class="fas fa-info-circle info-icon" data-id="fleet-config"></i></h3>
+                <div class="input-group">
+                    <label for="ev-percentage">EV Participation</label><i class="fas fa-info-circle info-icon" data-id="ev-percentage"></i>
+                    <input type="range" id="ev-percentage" name="ev-percentage" min="1" max="100" value="100">
+                    <div class="value-display"><span id="ev-percentage-value">100</span>% (<span id="selected-ev-count">1800</span> EVs)</div>
+                </div>
+                 <div class="input-group" id="bus-selection-group">
+                    <label for="bus-select">Network Buses</label><i class="fas fa-info-circle info-icon" data-id="bus-select"></i>
+                    <select id="bus-select" name="bus-select" multiple>
+                        <option value="all" selected>All Buses (1-33)</option>
+                        <!-- Options 1-33 populated by JS -->
+                    </select>
+                </div>
+                <div class="input-group checkbox-group">
+                    <label>EV Types Included</label><i class="fas fa-info-circle info-icon" data-id="ev-types"></i>
+                    <div>
+                         <input type="checkbox" id="type1" name="ev-type" value="1" checked><label for="type1">Type 1</label>
+                         <input type="checkbox" id="type2" name="ev-type" value="2" checked><label for="type2">Type 2</label>
+                         <input type="checkbox" id="type3" name="ev-type" value="3" checked><label for="type3">Type 3</label>
+                    </div>
+                </div>
+            </div>
+             <div class="panel-section">
+                <h3>Selected Fleet Overview <i class="fas fa-info-circle info-icon" data-id="fleet-overview"></i></h3>
+                <div id="fleet-stats-box">
+                    <p>Avg. Capacity: <span id="stat-avg-cap">--</span> kWh <i class="fas fa-info-circle info-icon" data-id="stat-avg-cap"></i></p>
+                    <p>Avg. Max Rate: <span id="stat-avg-rate">--</span> kW <i class="fas fa-info-circle info-icon" data-id="stat-avg-rate"></i></p>
+                    <p>Type Dist.: <span id="stat-type-dist">--</span> <i class="fas fa-info-circle info-icon" data-id="stat-type-dist"></i></p>
+                </div>
+                 <div class="chart-container" id="cap-dist-chart-container">
+                     <canvas id="capacityDistributionChart"></canvas>
+                 </div>
+            </div>
+             <div class="panel-section">
+                 <h3>Global Timing Adjustments <i class="fas fa-info-circle info-icon" data-id="timing-adjust"></i></h3>
+                  <div class="input-group">
+                    <label for="schedule-shift">Connection Schedule Shift</label><i class="fas fa-info-circle info-icon" data-id="schedule-shift"></i>
+                    <input type="range" id="schedule-shift" name="schedule-shift" min="-6" max="6" value="0" step="1">
+                    <div class="value-display"><span id="schedule-shift-value">0</span> Hours</div>
+                 </div>
+                  <div class="input-group">
+                    <label for="soc-adjustment">Initial SOC Additive Adj.</label><i class="fas fa-info-circle info-icon" data-id="soc-adjustment"></i>
+                    <input type="range" id="soc-adjustment" name="soc-adjustment" min="-20" max="20" value="0" step="5">
+                    <div class="value-display"><span id="soc-adjustment-value">0</span> %</div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Middle Panel: Strategy & Parameters (Add Font Awesome icons) -->
+        <div id="middle-panel" class="panel">
+            <div class="panel-section">
+                <h3>Charging Strategy & Logic <i class="fas fa-info-circle info-icon" data-id="charge-strategy"></i></h3>
+                <div class="input-group radio-group" id="charging-logic-group">
+                    <label>Primary Charging Logic</label><i class="fas fa-info-circle info-icon" data-id="charging-logic"></i>
+                    <input type="radio" id="logic-immediate" name="charging-logic" value="immediate" checked><label for="logic-immediate">Immediate Max Charging</label>
+                    <input type="radio" id="logic-delayed" name="charging-logic" value="delayed"><label for="logic-delayed">Delayed Start Charging</label>
+                    <input type="radio" id="logic-offpeak" name="charging-logic" value="offpeak"><label for="logic-offpeak">Simple Off-Peak Logic</label>
+                    <input type="radio" id="logic-soc-target" name="charging-logic" value="soc_target"><label for="logic-soc-target">Target SOC Charging</label>
+                </div>
+
+                <div class="input-group hidden" id="delay-group">
+                    <label for="charge-delay">Charging Delay Window (Hours)</label><i class="fas fa-info-circle info-icon" data-id="charge-delay"></i>
+                    <input type="number" id="charge-delay" name="charge-delay" min="0" max="12" value="1" step="1">
+                </div>
+                <div class="input-group hidden" id="offpeak-group">
+                     <label>Off-Peak Definition (Hours)</label><i class="fas fa-info-circle info-icon" data-id="offpeak-def"></i>
+                     <div style="display: flex; gap: 10px; align-items: center;">
+                         Start: <input type="number" title="Hour when peak period starts (0-23)" id="peak-start" name="peak-start" min="0" max="23" value="17" style="width: 65px;">
+                         End: <input type="number" title="Hour when peak period ends (0-23, inclusive)" id="peak-end" name="peak-end" min="0" max="23" value="20" style="width: 65px;">
+                     </div>
+                     <label for="peak-reduction" style="margin-top: 10px;">Peak Charging Reduction</label><i class="fas fa-info-circle info-icon" data-id="peak-reduction"></i>
+                    <input type="range" id="peak-reduction" name="peak-reduction" min="0" max="100" value="50" step="10">
+                    <div class="value-display"><span id="peak-reduction-value">50</span>%</div>
+                </div>
+                 <div class="input-group hidden" id="soc-target-group">
+                    <label for="soc-target-value">Target SOC Threshold (%)</label><i class="fas fa-info-circle info-icon" data-id="soc-target-value"></i>
+                    <input type="number" id="soc-target-value" name="soc-target-value" min="50" max="100" value="80" step="5">
+                </div>
+            </div>
+
+             <div class="panel-section">
+                 <h3>Power & Efficiency Parameters <i class="fas fa-info-circle info-icon" data-id="power-params"></i></h3>
+                  <div class="input-group">
+                     <label for="global-charge-limit">Global Max Charging Rate Limit (kW)</label><i class="fas fa-info-circle info-icon" data-id="global-charge-limit"></i>
+                     <input type="number" id="global-charge-limit" name="global-charge-limit" min="1" max="50" value="22" step="1">
+                 </div>
+                 <div class="input-group">
+                    <label for="charging-efficiency">Assumed Charging Efficiency</label><i class="fas fa-info-circle info-icon" data-id="charging-efficiency"></i>
+                    <input type="range" id="charging-efficiency" name="charging-efficiency" min="80" max="100" value="90" step="1">
+                    <div class="value-display"><span id="charging-efficiency-value">90</span>%</div>
+                 </div>
+                  <div class="input-group checkbox-group disabled-input">
+                    <input type="checkbox" id="v2g-enable" disabled><label for="v2g-enable">Enable V2G Discharge</label><i class="fas fa-info-circle info-icon" data-id="v2g-enable"></i>
+                 </div>
+                 <div class="input-group disabled-input">
+                     <label for="discharge-threshold">V2G Discharge Price Threshold</label><i class="fas fa-info-circle info-icon" data-id="v2g-threshold"></i>
+                     <input type="number" id="discharge-threshold" name="discharge-threshold" value="0.50" step="0.01" disabled>
+                 </div>
+             </div>
+              <div class="panel-section">
+                 <h3>Simulation Variability <i class="fas fa-info-circle info-icon" data-id="sim-variability"></i></h3>
+                 <div class="input-group disabled-input">
+                    <label for="start-time-random">Charging Start Time Randomness</label><i class="fas fa-info-circle info-icon" data-id="start-time-random"></i>
+                    <input type="range" id="start-time-random" name="start-time-random" min="0" max="60" value="5" step="5" disabled>
+                    <div class="value-display">+/- <span id="start-time-random-value">5</span> Minutes</div>
+                 </div>
+             </div>
+             <div id="status-display">Status message goes here</div>
+        </div>
+
+        <!-- Right Panel: Results (Add Font Awesome icons) -->
+        <div id="right-panel" class="panel">
+             <div class="panel-section">
+                <h3>Simulation Results Dashboard <i class="fas fa-info-circle info-icon" data-id="results-dashboard"></i></h3>
+                <div id="summary-metrics">
+                    <div class="metric-box"> <span class="metric-label">ML Peak Load <i class="fas fa-info-circle info-icon" data-id="ml-peak-load"></i></span> <span class="metric-value" id="ml-peak-load-value">-- MW</span> <span class="metric-note">(ML Model)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">Sim Peak Load <i class="fas fa-info-circle info-icon" data-id="sim-peak-load"></i></span> <span class="metric-value" id="sim-peak-load-value">-- MW</span> <span class="metric-note">(Detailed Sim)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">ML Total Energy <i class="fas fa-info-circle info-icon" data-id="ml-total-energy"></i></span> <span class="metric-value" id="ml-total-energy-value">-- MWh</span> <span class="metric-note">(ML Model)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">Sim Total Energy <i class="fas fa-info-circle info-icon" data-id="sim-total-energy"></i></span> <span class="metric-value" id="sim-total-energy-value">-- MWh</span> <span class="metric-note">(Detailed Sim)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">ML Load Factor <i class="fas fa-info-circle info-icon" data-id="ml-load-factor"></i></span> <span class="metric-value" id="ml-load-factor-value">-- %</span> <span class="metric-note">(ML Model)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">ML Time of Peak <i class="fas fa-info-circle info-icon" data-id="ml-peak-time"></i></span> <span class="metric-value" id="ml-peak-time-value">--:--</span> <span class="metric-note">(ML Model)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">Max Concurrent <i class="fas fa-info-circle info-icon" data-id="max-concurrent"></i></span> <span class="metric-value" id="max-concurrent-value">-- EVs</span> <span class="metric-note">(Detailed Sim)</span> </div>
+                    <div class="metric-box"> <span class="metric-label">Avg Final SOC <i class="fas fa-info-circle info-icon" data-id="avg-final-soc"></i></span> <span class="metric-value" id="avg-final-soc">-- %</span> <span class="metric-note">(Detailed Sim)</span> </div>
+                </div>
+                <div class="chart-container" id="chart-container"> <canvas id="loadProfileChart"></canvas> </div>
+             </div>
+             <div style="display: flex; gap: 15px; flex-grow: 1;">
+                 <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                     <div class="panel-section">
+                         <h3>Concurrent Charging Activity <i class="fas fa-info-circle info-icon" data-id="concurrent-chart"></i></h3>
+                         <div class="chart-container" id="concurrent-chart-container"> <canvas id="concurrentEvChart"></canvas> </div>
+                     </div>
+                      <div class="panel-section" style="flex-grow: 1;">
+                         <h3>Final State of Charge (SOC) <i class="fas fa-info-circle info-icon" data-id="soc-chart"></i></h3>
+                         <div class="chart-container" id="soc-chart-container"> <canvas id="finalSocChart"></canvas> </div>
+                     </div>
+                 </div>
+                 <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                     <div class="panel-section">
+                         <h3>Load Duration Curve (ML) <i class="fas fa-info-circle info-icon" data-id="ldc-chart"></i></h3>
+                         <div class="chart-container" id="ldc-chart-container"> <canvas id="loadDurationCurveChart"></canvas> </div>
+                     </div>
+                      <div class="panel-section" style="flex-grow: 1;">
+                         <h3>Top 5 Bus Peak Loads (Sim) <i class="fas fa-info-circle info-icon" data-id="bus-peak-table"></i></h3>
+                         <div id="per-bus-table-container">
+                             <table id="per-bus-peak-table">
+                                 <thead><tr><th>Bus ID</th><th>Peak Load (kW)</th></tr></thead>
+                                 <tbody id="bus-peak-tbody"></tbody>
+                             </table>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+              <div class="panel-section">
+                  <h3>Interpretation <i class="fas fa-info-circle info-icon" data-id="interpretation"></i></h3>
+                  <div id="interpretation-area">
+                      <p>Adjust parameters and click "Run Simulation" to see results and interpretation.</p>
+                  </div>
+              </div>
+        </div>
+    </div>
+
+    <!-- Info Modal Structure -->
+    <div id="info-modal" style="display: none;">
+        <div id="info-modal-content">
+            <span id="info-modal-close">×</span>
+            <h2 id="info-modal-title">Information</h2>
+            <p id="info-modal-text">Details about the selected item.</p>
+        </div>
+    </div>
+
+    <script>
+    // --- Wait for DOM to be fully loaded before running JS ---
+    document.addEventListener('DOMContentLoaded', () => {
+
+        console.log("DOM Loaded. Initializing UI..."); // Debug log
+
+        // --- DOM Element References (Ensure correct IDs) ---
+        const UI = {
+            evPercentageSlider: document.getElementById('ev-percentage'),
+            evPercentageValue: document.getElementById('ev-percentage-value'),
+            selectedEvCount: document.getElementById('selected-ev-count'),
+            busSelect: document.getElementById('bus-select'),
+            evTypeCheckboxes: document.querySelectorAll('input[name="ev-type"]'),
+            chargingLogicRadios: document.querySelectorAll('input[name="charging-logic"]'),
+            scheduleShiftSlider: document.getElementById('schedule-shift'),
+            scheduleShiftValue: document.getElementById('schedule-shift-value'),
+            socAdjustmentSlider: document.getElementById('soc-adjustment'),
+            socAdjustmentValue: document.getElementById('soc-adjustment-value'),
+            chargingEfficiencySlider: document.getElementById('charging-efficiency'),
+            chargingEfficiencyValue: document.getElementById('charging-efficiency-value'),
+            startTimeRandomSlider: document.getElementById('start-time-random'),
+            startTimeRandomValue: document.getElementById('start-time-random-value'),
+            peakReductionSlider: document.getElementById('peak-reduction'),
+            peakReductionValue: document.getElementById('peak-reduction-value'),
+            chargeDelayInput: document.getElementById('charge-delay'),
+            peakStartInput: document.getElementById('peak-start'),
+            peakEndInput: document.getElementById('peak-end'),
+            socTargetValueInput: document.getElementById('soc-target-value'),
+            globalChargeLimitInput: document.getElementById('global-charge-limit'),
+            mlPeakLoadValue: document.getElementById('ml-peak-load-value'),
+            simPeakLoadValue: document.getElementById('sim-peak-load-value'),
+            mlTotalEnergyValue: document.getElementById('ml-total-energy-value'),
+            simTotalEnergyValue: document.getElementById('sim-total-energy-value'),
+            mlLoadFactorValue: document.getElementById('ml-load-factor-value'),
+            mlPeakTimeValue: document.getElementById('ml-peak-time-value'),
+            maxConcurrentValue: document.getElementById('max-concurrent-value'),
+            avgFinalSoc: document.getElementById('avg-final-soc'),
+            busPeakTbody: document.getElementById('bus-peak-tbody'),
+            statAvgCap: document.getElementById('stat-avg-cap'),
+            statAvgRate: document.getElementById('stat-avg-rate'),
+            statTypeDist: document.getElementById('stat-type-dist'),
+            interpretationArea: document.getElementById('interpretation-area'),
+            runButton: document.getElementById('run-simulation-btn'),
+            statusDisplay: document.getElementById('status-display'),
+            themeSelector: document.getElementById('theme-selector'),
+            delayGroup: document.getElementById('delay-group'),
+            offpeakGroup: document.getElementById('offpeak-group'),
+            socTargetGroup: document.getElementById('soc-target-group'),
+            infoModal: document.getElementById('info-modal'),
+            infoModalTitle: document.getElementById('info-modal-title'),
+            infoModalText: document.getElementById('info-modal-text'),
+            infoModalClose: document.getElementById('info-modal-close'),
+            // Chart Canvases
+            loadProfileCanvas: document.getElementById('loadProfileChart'),
+            concurrentEvCanvas: document.getElementById('concurrentEvChart'),
+            finalSocCanvas: document.getElementById('finalSocChart'),
+            loadDurationCurveCanvas: document.getElementById('loadDurationCurveChart'),
+            capacityDistributionCanvas: document.getElementById('capacityDistributionChart'),
+        };
+
+        // Check if essential elements were found
+        if (!UI.runButton || !UI.themeSelector || !UI.loadProfileCanvas) {
+            console.error("CRITICAL ERROR: Could not find essential UI elements (e.g., Run button, theme selector, main chart canvas). Check HTML IDs.");
+            alert("Error initializing UI. Please check the console (F12).");
+            return; // Stop execution if essential elements are missing
+        }
+
+        // --- Mock Data (Client-side Fleet Stats) ---
+        const ALL_EV_DATA = Array.from({ length: 1800 }, (_, i) => ({
+            id: i, type: (i % 3) + 1, capacity: 40 + Math.random() * 40, maxRate: 7 + Math.random() * 43, bus: (i % 33) + 1
+        }));
+
+        // --- Chart Instances & Config ---
+        let charts = { loadProfile: null, concurrentEv: null, finalSoc: null, loadDurationCurve: null, capacityDistribution: null };
+        let chartColors = ['#0a84ff', '#ff9f40', '#34c759', '#ff453a', '#af52de', '#5ac8fa', '#ffcc00'];
+
+        // --- Information Content Store (Keep existing, ensure keys match data-id) ---
+        const infoContent = { /* ... (Keep your detailed infoContent dictionary here) ... */
+            'fleet-config': { title: 'Fleet Configuration', text: 'Define the group of Electric Vehicles (EVs) to be included in the simulation.' },
+            'ev-percentage': { title: 'EV Participation (%)', text: 'Select the percentage of the total available EVs (1800 in the dataset) to simulate. Lower percentages reduce simulation time and overall load. Affects both ML prediction and detailed simulation.' },
+            'bus-select': { title: 'Network Buses', text: 'Filter EVs based on the network bus they are connected to (1-33). Select "All Buses" or use Ctrl/Cmd+Click to select multiple specific buses. Affects both ML prediction (via feature input) and detailed simulation (by filtering the EV list).' },
+            'ev-types': { title: 'EV Types Included', text: 'Select which EV types (1, 2, 3 from the dataset) to include. Different types may have varying capacities and charging rates. Affects both ML prediction (feature input) and detailed simulation (filtering).' },
+            'fleet-overview': { title: 'Selected Fleet Overview', text: 'Provides a quick summary of the currently selected EV fleet based on the filters above (Participation, Bus, Type). Calculated client-side using simplified data for responsiveness.' },
+            'stat-avg-cap': { title: 'Average Capacity (kWh)', text: 'The average battery capacity (in kilowatt-hours) of the selected EVs. Indicates energy storage potential.' },
+            'stat-avg-rate': { title: 'Average Max Rate (kW)', text: 'The average maximum charging rate (in kilowatts) the selected EVs can accept. Influences how quickly they can charge.' },
+            'stat-type-dist': { title: 'Type Distribution', text: 'The number of EVs of each type (T1, T2, T3) within the selected fleet.' },
+            'capacityDistributionChart': { title: 'Capacity Distribution Chart', text: 'Visualizes the distribution of battery capacities (kWh) among the selected EVs. Shows how many EVs fall into different capacity ranges (e.g., 0-20 kWh, 20-40 kWh, etc.).' },
+            'timing-adjust': { title: 'Global Timing Adjustments', text: 'Apply uniform shifts to the timing aspects of all selected EVs.' },
+            'schedule-shift': { title: 'Connection Schedule Shift (Hours)', text: 'Shift the entire connection schedule of all selected EVs forward (+) or backward (-). A +2 shifts an EV connecting at 18:00 to connect at 20:00. Affects both ML prediction and detailed simulation.' },
+            'soc-adjustment': { title: 'Initial SOC Additive Adjustment (%)', text: 'Add (+) or subtract (-) a fixed percentage from the initial State of Charge (SOC) of every selected EV at the start of the simulation (Hour 0). Clipped between 0% and 100%. Affects both ML prediction and detailed simulation.' },
+            'charge-strategy': { title: 'Charging Strategy & Logic', text: 'Determine the rules governing when and how EVs charge.' },
+            'charging-logic': { title: 'Primary Charging Logic', text: 'Select the main algorithm controlling charging behavior:\n<strong>Immediate:</strong> Charge at max rate whenever connected until full.\n<strong>Delayed:</strong> Wait a set time after connecting before starting.\n<strong>Off-Peak:</strong> Reduce charging rate during peak hours.\n<strong>Target SOC:</strong> Charge only until a specific SOC % is reached.' },
+            'charge-delay': { title: 'Charging Delay Window (Hours)', text: '<strong>(Used only for "Delayed Start" logic)</strong> The number of hours an EV waits after connecting before it begins charging.' },
+            'offpeak-def': { title: 'Off-Peak Definition (Hours)', text: '<strong>(Used only for "Simple Off-Peak" logic)</strong> Define the start and end hours (inclusive, 0-23) of the peak period. Handles overnight wrap-around (e.g., Start 22, End 6).' },
+            'peak-reduction': { title: 'Peak Charging Reduction (%)', text: '<strong>(Used only for "Simple Off-Peak" logic)</strong> The percentage by which the charging rate is reduced for EVs charging during the defined peak hours.' },
+            'soc-target-value': { title: 'Target SOC Threshold (%)', text: '<strong>(Used only for "Target SOC" logic)</strong> The State of Charge percentage EVs aim to reach. They stop charging once this target is met.' },
+            'power-params': { title: 'Power & Efficiency Parameters', text: 'Define global limits and conversion efficiency.' },
+            'global-charge-limit': { title: 'Global Max Charging Rate Limit (kW)', text: 'A universal maximum charging rate (in kilowatts) applied to all EVs, even if their individual capability is higher. Acts as a bottleneck if set lower than EV capabilities. Affects both ML prediction and detailed simulation.' },
+            'charging-efficiency': { title: 'Assumed Charging Efficiency (%)', text: 'The grid-to-battery efficiency assumed for the charging process. E.g., 90% means 10 kWh drawn from the grid results in 9 kWh added to the battery. This value is used as a direct input feature for the ML Model. The detailed simulation uses per-EV efficiency values from the source data if available, otherwise defaults.' },
+            'v2g-enable': { title: 'Enable V2G Discharge (Future)', text: '<strong>(Currently Disabled)</strong> This feature would allow EVs to discharge power back to the grid (Vehicle-to-Grid). Not implemented in the current simulation backend.' },
+            'v2g-threshold': { title: 'V2G Discharge Price Threshold (Future)', text: '<strong>(Currently Disabled)</strong> A conceptual price threshold (e.g., $/kWh) above which enabled EVs might start discharging.' },
+            'sim-variability': { title: 'Simulation Variability', text: 'Parameters intended to add randomness (currently not implemented in the backend).' },
+            'start-time-random': { title: 'Charging Start Time Randomness', text: '<strong>(Currently Disabled)</strong> This parameter was intended to add a small random variation (+/- minutes) to the start time of each EV\'s charging session within its connected hour. Not used by the ML model or the current detailed simulation logic.' },
+            'results-dashboard': { title: 'Simulation Results Dashboard', text: 'Displays key metrics and visualizations from the simulation run. Includes results from both the fast ML prediction and the slower, more detailed simulation for comparison.' },
+            'ml-peak-load': { title: 'ML Peak Load (MW)', text: 'The highest aggregated power demand (in Megawatts) across all 24 hours, as predicted by the Machine Learning model.' },
+            'sim-peak-load': { title: 'Sim Peak Load (MW)', text: 'The highest aggregated power demand (in Megawatts) across all 24 hours, calculated by the detailed hour-by-hour simulation.' },
+            'ml-total-energy': { title: 'ML Total Energy (MWh)', text: 'The total energy consumed (in Megawatt-hours) over the 24-hour period, predicted by the ML model (sum of hourly loads).' },
+            'sim-total-energy': { title: 'Sim Total Energy (MWh)', text: 'The total energy consumed (in Megawatt-hours) over the 24-hour period, calculated by the detailed simulation (sum of hourly loads).' },
+            'ml-load-factor': { title: 'ML Load Factor (%)', text: 'The ratio of the average load to the peak load over 24 hours, based on the ML prediction. Calculated as (Total Energy / 24) / Peak Load. Indicates how consistently the power demand is utilized.' },
+            'ml-peak-time': { title: 'ML Time of Peak', text: 'The hour (0-23) during which the peak load occurred, according to the ML model prediction.' },
+            'max-concurrent': { title: 'Max Concurrent EVs (Sim)', text: 'The maximum number of EVs charging simultaneously in any single hour during the detailed simulation.' },
+            'avg-final-soc': { title: 'Average Final SOC (%) (Sim)', text: 'The average State of Charge across all simulated EVs at the end of the 24-hour detailed simulation.' },
+            'loadProfileChart': { title: 'ML Predicted Aggregated Load Profile', text: 'Shows the predicted total power demand (MW) from all charging EVs for each hour of the day, based on the ML model. X-axis: Hour (0-23). Y-axis: Power (MW).' },
+            'concurrent-chart': { title: 'Concurrent Charging Activity (Sim)', text: 'Shows the number of EVs actively drawing power in each hour, based on the detailed simulation. X-axis: Hour (0-23). Y-axis: Number of EVs.' },
+            'soc-chart': { title: 'Final State of Charge (SOC) Distribution (Sim)', text: 'Shows the distribution of battery charge levels across all simulated EVs at the end of the 24-hour detailed simulation. X-axis: SOC Bins (%). Y-axis: Number of EVs in each bin.' },
+            'ldc-chart': { title: 'Load Duration Curve (ML)', text: 'Shows the ML-predicted hourly loads sorted from highest to lowest. Helps visualize how often high loads occur. X-axis: Hours (sorted by load). Y-axis: Power (MW).' },
+            'bus-peak-table': { title: 'Top 5 Bus Peak Loads (Sim)', text: 'Lists the 5 network buses that experienced the highest peak charging load (in kilowatts) during any hour of the detailed simulation.' },
+            'interpretation': { title: 'Interpretation', text: 'Provides a dynamic, text-based summary and interpretation of the simulation results based on the selected input parameters and the calculated outputs.' },
+        };
+
+        // --- Chart.js Theme Handling ---
+        function getChartThemeSettings(theme) {
+            const isDark = theme === 'dark';
+            const style = getComputedStyle(document.documentElement);
+            const textColor = style.getPropertyValue('--chart-label').trim();
+            const gridColor = style.getPropertyValue('--chart-grid').trim();
+            const titleColor = style.getPropertyValue('--text-primary').trim();
+            const tooltipBg = style.getPropertyValue('--chart-tooltip-bg').trim();
+
+            let currentChartColors = chartColors; // Fallback
+            try {
+                const colorString = style.getPropertyValue('--chart-colors').trim();
+                if (colorString) { currentChartColors = colorString.replace(/[\[\]' ]/g, '').split(','); }
+            } catch (e) { console.warn("Could not parse chart colors from CSS var.", e); }
+
+            // Update Chart.js defaults globally
+            Chart.defaults.color = textColor;
+            Chart.defaults.borderColor = gridColor;
+            Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+            Chart.defaults.font.size = 11;
+            Chart.defaults.plugins.title.color = titleColor;
+            Chart.defaults.plugins.title.font = { size: 13, weight: '500'};
+            Chart.defaults.plugins.legend.labels.color = textColor;
+            Chart.defaults.plugins.legend.labels.boxWidth = 12;
+            Chart.defaults.plugins.legend.labels.padding = 15;
+            Chart.defaults.plugins.legend.position = 'bottom';
+            Chart.defaults.plugins.tooltip.backgroundColor = tooltipBg;
+            Chart.defaults.plugins.tooltip.titleColor = titleColor;
+            Chart.defaults.plugins.tooltip.bodyColor = textColor;
+            Chart.defaults.plugins.tooltip.padding = 8;
+            Chart.defaults.plugins.tooltip.cornerRadius = 4;
+            Chart.defaults.plugins.tooltip.boxPadding = 4;
+            Chart.defaults.plugins.tooltip.usePointStyle = true;
+
+            return currentChartColors; // Return colors for dataset updates
+        }
+
+        function initializeCharts() {
+            console.log("Initializing charts..."); // Debug log
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            chartColors = getChartThemeSettings(currentTheme); // Apply theme defaults & get colors
+
+            const createChart = (canvas, type, data, options) => {
+                if (!canvas) {
+                    console.error(`Canvas element for chart not found! Check ID in HTML.`);
+                    return null;
+                }
+                return new Chart(canvas.getContext('2d'), { type, data, options });
+            };
+
+            const defaultOptions = {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, // Faster animation
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { title: { display: true, text:'Hour', font: { size: 10 } }, grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 15 } },
+                    y: { beginAtZero: true, title: { display: true, font: { size: 10 } }, grid: { borderDash: [2, 3] }, ticks: { maxTicksLimit: 6 } }
+                },
+                plugins: {
+                    // Legend and title are now part of defaults or set below
+                    legend: { display: true }, // Default legend display
+                     title: { display: true, padding: { top: 5, bottom: 10 } }
+                }
+            };
+
+             // Deep merge helper
+             const mergeDeep = (target, source) => {
+                let output = Object.assign({}, target);
+                if (isObject(target) && isObject(source)) {
+                    Object.keys(source).forEach(key => {
+                        if (isObject(source[key])) {
+                            if (!(key in target))
+                                Object.assign(output, { [key]: source[key] });
+                            else
+                                output[key] = mergeDeep(target[key], source[key]);
+                        } else {
+                            Object.assign(output, { [key]: source[key] });
+                        }
+                    });
+                }
+                return output;
+            }
+            const isObject = (item) => {
+                return (item && typeof item === 'object' && !Array.isArray(item));
+            }
+
+
+            // Destroy existing charts if they exist
+            Object.values(charts).forEach(chart => chart?.destroy());
+
+            // Create new charts
+            charts.loadProfile = createChart(UI.loadProfileCanvas, 'line',
+                { labels: Array.from({length: 24}, (_, i) => i), datasets: [{ label: 'ML Predicted Load', data: [], borderColor: chartColors[0], tension: 0.3, fill: true, backgroundColor: hexToRgba(chartColors[0], 0.2), borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4 }] },
+                mergeDeep(defaultOptions, { scales: { y: { title:{ text:'Power (MW)'}} }, plugins: { title: { text: 'ML Predicted Aggregated Load Profile' } } })
+            );
+            charts.concurrentEv = createChart(UI.concurrentEvCanvas, 'bar',
+                { labels: Array.from({length: 24}, (_, i) => i), datasets: [{ label: 'EVs Charging', data: [], backgroundColor: chartColors[1], barPercentage: 0.7, categoryPercentage: 0.8 }] },
+                mergeDeep(defaultOptions, { scales: { y: { title:{ text:'Count'}} }, plugins: { title: { text: 'Concurrent EVs (Detailed Sim)' }, legend: { display: false } } })
+            );
+            charts.finalSoc = createChart(UI.finalSocCanvas, 'bar',
+                { labels: ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'], datasets: [{ label: 'EV Count', data: [], backgroundColor: chartColors[2], barPercentage: 0.9, categoryPercentage: 0.9 }] },
+                mergeDeep(defaultOptions, { scales: { x:{title:{text:'SOC (%)'}}, y: { title:{ display: true, text:'Count'}} }, plugins: { title: { text: 'Final SOC Distribution (Detailed Sim)' }, legend: { display: false } } })
+            );
+            charts.loadDurationCurve = createChart(UI.loadDurationCurveCanvas, 'line',
+                { labels: Array.from({length: 24}, (_, i) => i + 1), datasets: [{ label: 'Load (MW)', data: [], borderColor: chartColors[3], fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5 }] },
+                mergeDeep(defaultOptions, { scales: { x:{title:{text:'Hours (Sorted by Load)'}}, y: { title:{ text:'Power (MW)'}} }, plugins: { title: { text: 'Load Duration Curve (ML Prediction)' }, legend: { display: false } } })
+            );
+             charts.capacityDistribution = createChart(UI.capacityDistributionCanvas, 'bar',
+                { labels: [], datasets: [{ label: 'EV Count', data: [], backgroundColor: chartColors[4], barPercentage: 0.8, categoryPercentage: 0.9 }] },
+                mergeDeep(defaultOptions, { indexAxis: 'y', scales: { x:{title:{ text:'Count'}}, y: { title:{ text:'Capacity (kWh)'}, ticks: { font: { size: 9 } } } }, plugins: { title: { text: 'Selected Fleet Capacity Distribution' }, legend:{display:false} } })
+            );
+
+            console.log("Charts initialized."); // Debug log
+        }
+
+        function updateChartsTheme() {
+             console.log("Updating chart themes..."); // Debug log
+             const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+             chartColors = getChartThemeSettings(currentTheme); // Apply defaults and get colors
+
+             Object.values(charts).forEach(chart => {
+                if (chart) {
+                     // Update dataset colors - find color index based on original setup
+                     chart.data.datasets.forEach((dataset, i) => {
+                        const colorIndex = i % chartColors.length; // Simple modulo for color cycling
+                        if (dataset.borderColor) dataset.borderColor = chartColors[colorIndex];
+                        if (dataset.backgroundColor) {
+                            // Handle bar colors vs line fill colors
+                            dataset.backgroundColor = chart.config.type === 'line' && dataset.fill ? hexToRgba(chartColors[colorIndex], 0.2) : chartColors[colorIndex];
+                        }
+                     });
+                     chart.update();
+                }
+             });
+             // Update capacity chart separately as its color might be fixed index
+             if(charts.capacityDistribution) {
+                charts.capacityDistribution.data.datasets[0].backgroundColor = chartColors[4 % chartColors.length];
+                charts.capacityDistribution.update();
+             }
+             console.log("Chart themes updated."); // Debug log
+        }
+
+
+        // --- Event Listeners & UI Logic ---
+        function setupEventListeners() {
+            console.log("Setting up event listeners..."); // Debug log
+            // Sliders
+            const sliders = [
+                { slider: UI.evPercentageSlider, display: UI.evPercentageValue }, { slider: UI.scheduleShiftSlider, display: UI.scheduleShiftValue },
+                { slider: UI.socAdjustmentSlider, display: UI.socAdjustmentValue }, { slider: UI.chargingEfficiencySlider, display: UI.chargingEfficiencyValue },
+                { slider: UI.startTimeRandomSlider, display: UI.startTimeRandomValue }, { slider: UI.peakReductionSlider, display: UI.peakReductionValue }
+            ];
+            sliders.forEach(({ slider, display }) => {
+                if (slider && display) {
+                    slider.addEventListener('input', (e) => { display.textContent = e.target.value; });
+                    display.textContent = slider.value;
+                } else { console.warn("Missing slider or display element for listener setup."); }
+            });
+
+            UI.evPercentageSlider?.addEventListener('input', updateSelectedEvCount); // Add null checks
+            UI.chargingLogicRadios?.forEach(radio => radio.addEventListener('change', handleChargingLogicChange));
+            UI.busSelect?.addEventListener('change', updateFleetStatsDisplay);
+            UI.evTypeCheckboxes?.forEach(cb => cb.addEventListener('change', updateFleetStatsDisplay));
+            UI.evPercentageSlider?.addEventListener('input', updateFleetStatsDisplay);
+            UI.runButton?.addEventListener('click', handleRunSimulation);
+            UI.themeSelector?.addEventListener('change', handleThemeChange);
+
+            // Info Modal Listeners (use event delegation for potentially dynamic icons)
+            document.body.addEventListener('click', (event) => {
+                 if (event.target.classList.contains('info-icon')) {
+                     showInfoModal(event);
+                 }
+            });
+            // document.querySelectorAll('.info-icon').forEach(icon => { // Keep direct attachment too, maybe safer?
+            //     icon.addEventListener('click', showInfoModal);
+            // });
+            UI.infoModalClose?.addEventListener('click', hideInfoModal);
+            UI.infoModal?.addEventListener('click', (event) => { if (event.target === UI.infoModal) { hideInfoModal(); } });
+
+            console.log("Event listeners set up."); // Debug log
+        }
+
+        // --- Functions (Keep implementations from previous response, ensure they use UI object) ---
+
+        function handleChargingLogicChange() {
+            const selectedLogic = document.querySelector('input[name="charging-logic"]:checked')?.value; // Add null check
+            if (!selectedLogic || !UI.delayGroup || !UI.offpeakGroup || !UI.socTargetGroup) return;
+            UI.delayGroup.classList.toggle('hidden', selectedLogic !== 'delayed');
+            UI.offpeakGroup.classList.toggle('hidden', selectedLogic !== 'offpeak');
+            UI.socTargetGroup.classList.toggle('hidden', selectedLogic !== 'soc_target');
+         }
+
+        function updateSelectedEvCount() {
+            if (!UI.evPercentageSlider || !UI.evPercentageValue || !UI.selectedEvCount) return;
+            const percentage = parseInt(UI.evPercentageSlider.value);
+            UI.evPercentageValue.textContent = percentage;
+            UI.selectedEvCount.textContent = Math.round(1800 * (percentage / 100));
+         }
+
+        function getSelectedEvData() { // Client-side mock data filtering
+            if (!UI.evPercentageSlider || !UI.busSelect) return []; // Handle missing elements
+            const percentage = parseInt(UI.evPercentageSlider.value) / 100;
+            const selectedBusOptions = Array.from(UI.busSelect.selectedOptions).map(opt => opt.value);
+            const selectedTypes = Array.from(document.querySelectorAll('input[name="ev-type"]:checked')).map(chk => parseInt(chk.value));
+            let filteredData = ALL_EV_DATA;
+            if (!selectedBusOptions.includes('all')) {
+                const busNumbers = selectedBusOptions.map(Number);
+                filteredData = filteredData.filter(ev => busNumbers.includes(ev.bus));
+            }
+            if (selectedTypes.length > 0 && selectedTypes.length < 3) {
+                filteredData = filteredData.filter(ev => selectedTypes.includes(ev.type));
+            }
+            const targetCount = Math.round(filteredData.length * percentage);
+            // Simple slice - randomness not critical for stats display
+            filteredData = filteredData.slice(0, targetCount);
+            return filteredData;
+         }
+
+        function updateFleetStatsDisplay() {
+             if (!UI.statAvgCap || !UI.statAvgRate || !UI.statTypeDist || !UI.selectedEvCount) return; // Check elements exist
+             const selectedData = getSelectedEvData();
+             const count = selectedData.length;
+             UI.selectedEvCount.textContent = count; // Update display with actual count
+
+             if (count === 0) {
+                 UI.statAvgCap.textContent = '--'; UI.statAvgRate.textContent = '--'; UI.statTypeDist.textContent = 'N/A';
+                 updateCapacityChart([]); return;
+             }
+
+             const totalCap = selectedData.reduce((sum, ev) => sum + ev.capacity, 0);
+             const totalRate = selectedData.reduce((sum, ev) => sum + ev.maxRate, 0);
+             const typeCounts = selectedData.reduce((counts, ev) => { counts[ev.type] = (counts[ev.type] || 0) + 1; return counts; }, {});
+
+             UI.statAvgCap.textContent = (totalCap / count).toFixed(1);
+             UI.statAvgRate.textContent = (totalRate / count).toFixed(1);
+             UI.statTypeDist.textContent = Object.entries(typeCounts).sort(([t1], [t2]) => t1 - t2).map(([t, c]) => `T${t}: ${c}`).join(', ');
+             updateCapacityChart(selectedData.map(ev => ev.capacity)); // Update chart
+         }
+
+        function updateCapacityChart(capacities) {
+             const chart = charts.capacityDistribution;
+             if (!chart) return;
+
+             const binSize = 20; const maxCap = Math.max(100, Math.ceil(Math.max(0, ...capacities) / binSize) * binSize); // Ensure at least 100
+             const numBins = Math.ceil(maxCap / binSize); const counts = Array(numBins).fill(0);
+             const labels = Array(numBins).fill(0).map((_, i) => `${i * binSize}-${(i + 1) * binSize}`);
+
+             capacities.forEach(cap => {
+                 const binIndex = Math.min(numBins - 1, Math.max(0, Math.floor(cap / binSize)));
+                 if (!isNaN(binIndex)) { counts[binIndex]++; }
+             });
+
+             chart.data.labels = labels;
+             chart.data.datasets[0].data = counts;
+             chart.data.datasets[0].backgroundColor = chartColors[4 % chartColors.length]; // Use current theme color
+             chart.update('none'); // No animation on filter changes
+         }
+
+        function handleRunSimulation() {
+            if (!UI.runButton) return;
+            showStatus("Running simulation...", "info");
+            UI.runButton.disabled = true; UI.runButton.textContent = "Running...";
+            if(UI.interpretationArea) UI.interpretationArea.innerHTML = '<p>Generating results and interpretation...</p>';
+
+            const params = gatherParameters();
+            if (!params) { // Handle error if gatherParameters fails
+                showStatus("Error: Could not gather parameters.", "error");
+                UI.runButton.disabled = false; UI.runButton.textContent = "Run Simulation";
+                return;
+            }
+            console.log("Parameters:", params); // Log params being sent
+
+            fetch('/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) })
+            .then(response => {
+                // Log status for debugging network issues
+                console.log(`Fetch response status: ${response.status}`);
+                if (!response.ok) {
+                    // Attempt to get text first, then JSON, as error might not be JSON
+                    return response.text().then(text => {
+                        try {
+                            const err = JSON.parse(text); // Try parsing as JSON
+                            throw new Error(err.error || `Server Error ${response.status}: ${text}`);
+                        } catch (e) {
+                             throw new Error(`Server Error ${response.status}: ${text}`); // Throw text if not JSON
+                        }
+                    });
+                }
+                return response.json();
+            })
+            .then(results => {
+                console.log("Backend Results Received:", results); // Log received results
+                if (results.error || results.error_ml || results.error_sim) {
+                    let errorMsg = results.error || results.error_ml || results.error_sim || "Unknown backend error";
+                    throw new Error(errorMsg);
+                }
+                updateUI(results); // Update charts and metrics first
+                generateInterpretationText(params, results); // Generate text
+                showStatus(`Simulation complete (${results.total_request_time ?? '?'}s)`, "success");
+            })
+            .catch(error => {
+                console.error('Simulation Fetch/Processing Error:', error); // Log the full error
+                showStatus(`Error: ${error.message}`, "error");
+                if(UI.interpretationArea) UI.interpretationArea.innerHTML = `<p><strong>Error during simulation:</strong> ${error.message}</p>`;
+            })
+            .finally(() => {
+                if (UI.runButton) { // Check again in case of early errors
+                    UI.runButton.disabled = false; UI.runButton.textContent = "Run Simulation";
+                }
+            });
+        }
+
+        function gatherParameters() {
+            try { // Add try-catch for robustness
+                const selectedBusOptions = Array.from(UI.busSelect.selectedOptions).map(opt => opt.value);
+                const logicRadio = document.querySelector('input[name="charging-logic"]:checked');
+                return {
+                    evPercentage: parseInt(UI.evPercentageSlider.value),
+                    selectedBuses: selectedBusOptions.includes('all') ? 'all' : selectedBusOptions.map(Number),
+                    selectedEvTypes: Array.from(document.querySelectorAll('input[name="ev-type"]:checked')).map(chk => parseInt(chk.value)),
+                    chargingLogic: logicRadio ? logicRadio.value : 'immediate', // Default if none selected
+                    chargeDelay: parseInt(UI.chargeDelayInput.value), peakStart: parseInt(UI.peakStartInput.value), peakEnd: parseInt(UI.peakEndInput.value),
+                    peakReduction: parseInt(UI.peakReductionSlider.value), socTarget: parseInt(UI.socTargetValueInput.value),
+                    globalChargeLimit: parseFloat(UI.globalChargeLimitInput.value), scheduleShift: parseInt(UI.scheduleShiftSlider.value),
+                    socAdjustment: parseInt(UI.socAdjustmentSlider.value), chargingEfficiency: parseInt(UI.chargingEfficiencySlider.value),
+                    startTimeRandom: parseInt(UI.startTimeRandomSlider.value),
+                };
+            } catch (e) {
+                console.error("Error gathering parameters:", e);
+                return null; // Indicate failure
+            }
+         }
+
+        function showStatus(message, type = 'info') {
+             if (!UI.statusDisplay) return;
+             UI.statusDisplay.textContent = message; UI.statusDisplay.className = type; UI.statusDisplay.style.display = 'block';
+             // Simple hide logic, consider more robust approach if needed
+             if (type === 'info' || type === 'success') { setTimeout(() => { if (UI.statusDisplay.textContent === message) { UI.statusDisplay.style.display = 'none'; } }, 5000); }
+        }
+
+        function updateUI(results) {
+             console.log("Updating UI with results..."); // Debug log
+             if (!results) { console.warn("updateUI called with null/empty results"); return; };
+
+            const formatNum = (value, decimals = 2, unit = '') => {
+                const num = parseFloat(value);
+                return (value === null || value === undefined || isNaN(num)) ? `--${unit ? ' ' + unit : ''}` : `${num.toFixed(decimals)}${unit ? ' ' + unit : ''}`;
+            };
+
+            // Update Metrics (Add null checks for UI elements)
+            UI.mlPeakLoadValue && (UI.mlPeakLoadValue.textContent = formatNum(results.ml_peakLoad, 2, 'MW'));
+            UI.mlTotalEnergyValue && (UI.mlTotalEnergyValue.textContent = formatNum(results.ml_totalEnergy, 2, 'MWh'));
+            UI.mlLoadFactorValue && (UI.mlLoadFactorValue.textContent = formatNum(results.ml_loadFactor, 1, '%'));
+            UI.mlPeakTimeValue && (UI.mlPeakTimeValue.textContent = (results.ml_peakTime !== null && results.ml_peakTime !== undefined) ? `${results.ml_peakTime}:00` : '--:--');
+            UI.simPeakLoadValue && (UI.simPeakLoadValue.textContent = formatNum(results.sim_peakLoad, 2, 'MW'));
+            UI.simTotalEnergyValue && (UI.simTotalEnergyValue.textContent = formatNum(results.sim_totalEnergy, 2, 'MWh'));
+            UI.maxConcurrentValue && (UI.maxConcurrentValue.textContent = formatNum(results.sim_concurrentEVs ? Math.max(0, ...results.sim_concurrentEVs) : null, 0, 'EVs'));
+            UI.avgFinalSoc && (UI.avgFinalSoc.textContent = formatNum(results.sim_avgFinalSoc, 1, '%'));
+
+            // Update Charts (Add null checks for charts)
+            if (charts.loadProfile && results.ml_hourlyLoad) { charts.loadProfile.data.datasets[0].data = results.ml_hourlyLoad; charts.loadProfile.update(); } else { console.warn("Load profile chart or data missing for update."); }
+            if (charts.concurrentEv && results.sim_concurrentEVs) { charts.concurrentEv.data.datasets[0].data = results.sim_concurrentEVs; charts.concurrentEv.update(); } else { console.warn("Concurrent EV chart or data missing for update."); }
+            if (charts.loadDurationCurve && results.ml_ldc) { charts.loadDurationCurve.data.datasets[0].data = results.ml_ldc; charts.loadDurationCurve.data.labels = Array.from({ length: results.ml_ldc.length }, (_, i) => i + 1); charts.loadDurationCurve.update(); } else { console.warn("LDC chart or data missing for update."); }
+            if (charts.finalSoc && results.sim_finalSOCs) {
+                 const socBins = Array(10).fill(0);
+                 if (Array.isArray(results.sim_finalSOCs)) {
+                     results.sim_finalSOCs.forEach(soc => {
+                         const socNum = parseFloat(soc); if (!isNaN(socNum)) { const binIndex = Math.min(9, Math.max(0, Math.floor(socNum / 10))); socBins[binIndex]++; }
+                     });
+                 } else { console.warn("sim_finalSOCs is not an array:", results.sim_finalSOCs); }
+                 charts.finalSoc.data.datasets[0].data = socBins; charts.finalSoc.update();
+            } else { console.warn("Final SOC chart or data missing for update."); }
+
+            // Update Bus Table
+            if (UI.busPeakTbody) {
+                UI.busPeakTbody.innerHTML = ''; // Clear
+                const topBusPeaks = results.sim_topBusPeaks || [];
+                if (topBusPeaks.length > 0) {
+                    topBusPeaks.forEach(bus => { const row = UI.busPeakTbody.insertRow(); row.insertCell().textContent = bus.busId; row.insertCell().textContent = formatNum(bus.peakLoadKw, 2); });
+                    for(let i = topBusPeaks.length; i < 5; i++) { const row = UI.busPeakTbody.insertRow(); row.insertCell().textContent = '-'; row.insertCell().textContent = '-'; }
+                } else {
+                    const row = UI.busPeakTbody.insertRow(); const cell = row.insertCell(); cell.colSpan = 2;
+                    cell.textContent = results.error_sim ? 'Sim Error' : (results.sim_numEVs === 'N/A (Skipped)' ? 'Sim Skipped' : 'No bus data');
+                    cell.style.textAlign = 'center'; cell.style.color = 'var(--text-secondary)';
+                }
+            } else { console.warn("Bus peak table body not found."); }
+             console.log("UI update complete."); // Debug log
+        }
+
+        function generateInterpretationText(params, results) {
+            if (!UI.interpretationArea) return; // Exit if area doesn't exist
+            let html = '';
+            // Defensive formatting
+            const format = (val, dec = 1) => { const num = parseFloat(val); return isNaN(num) ? 'N/A' : num.toFixed(dec); }
+            const numEVs = results.sim_numEVs ?? 'N/A'; // Handle null/undefined
+
+            // Basic Summary
+            html += `<p>Simulating <strong>${params.evPercentage}%</strong> (${numEVs}) of EVs`;
+            if (params.selectedBuses !== 'all' && Array.isArray(params.selectedBuses)) html += ` from <strong>${params.selectedBuses.length} selected buses</strong>`; else html += ` from <strong>all buses</strong>`;
+            if (params.selectedEvTypes?.length < 3 && Array.isArray(params.selectedEvTypes)) html += ` including types <strong>${params.selectedEvTypes.join(', ')}</strong>. `; else html += `. `;
+            html += `Initial SOC was adjusted by <strong>${params.socAdjustment ?? 0}%</strong> and connection times shifted by <strong>${params.scheduleShift ?? 0} hours</strong>.</p>`;
+
+            // Charging Logic Impact
+            html += `<p>The <strong>${params.chargingLogic?.replace('_', ' ') ?? 'N/A'}</strong> charging logic was used. `;
+            switch (params.chargingLogic) {
+                case 'immediate': html += `This generally leads to the highest initial ramp-up and peak load. `; break;
+                case 'delayed': html += `EVs waited <strong>${params.chargeDelay ?? 0} hours</strong> after connecting, likely shifting the load peak later. `; break;
+                case 'offpeak': html += `Charging was reduced by <strong>${params.peakReduction ?? 0}%</strong> during peak hours (<strong>${params.peakStart ?? 'N/A'}:00-${params.peakEnd ?? 'N/A'}:00</strong>), aiming to flatten the curve. `; break;
+                case 'soc_target': html += `EVs stopped charging upon reaching <strong>${params.socTarget ?? 100}%</strong> SOC, potentially reducing total energy. `; break;
+                default: html += `Unknown charging logic selected. `; break;
+            }
+            html += `The global charge rate limit was <strong>${params.globalChargeLimit ?? 'N/A'} kW</strong> per EV.</p>`;
+
+            // Key Results Comparison
+            if (results.ml_peakLoad != null && results.sim_peakLoad != null) { // Check for non-null
+                 html += `<p>ML predicted peak: <strong>${format(results.ml_peakLoad)} MW</strong> (at ${results.ml_peakTime ?? 'N/A'}:00). Sim calculated peak: <strong>${format(results.sim_peakLoad)} MW</strong>. `;
+                 html += `Total energy: <strong>${format(results.ml_totalEnergy)} MWh</strong> (ML) vs. <strong>${format(results.sim_totalEnergy)} MWh</strong> (Sim).</p>`;
+            } else {
+                 html += `<p>Key ML or Simulation results (peak/energy) are missing or invalid.</p>`
+            }
+
+            // Detailed Sim Insights
+            if (results.sim_concurrentEVs && results.sim_avgFinalSoc != null) {
+                 const maxConcurrent = Array.isArray(results.sim_concurrentEVs) ? Math.max(0, ...results.sim_concurrentEVs) : 'N/A';
+                 const avgSoc = results.sim_avgFinalSoc;
+                 html += `<p>Max concurrent charging EVs (Sim): <strong>${maxConcurrent}</strong>. Average final SOC (Sim): <strong>${format(avgSoc)}%</strong>. `;
+                 if (avgSoc < 70 && params.chargingLogic !== 'soc_target') html += `Low final SOC might indicate insufficient charging time or restrictive parameters.`;
+                 else if (avgSoc > 95) html += `Most EVs reached a high state of charge.`;
+                 html += `</p>`;
+            }
+
+            html += `<p><em>Note: ML predictions are fast estimates; detailed simulations provide granular insights but are slower. Differences are expected.</em></p>`;
+            UI.interpretationArea.innerHTML = html;
+        }
+
+        // --- Theme Handling (Simplified) ---
+        function applyTheme(theme) {
+            console.log(`Applying theme: ${theme}`); // Debug log
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            updateChartsTheme(); // Update chart colors and defaults
+        }
+
+        function loadInitialTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark if nothing saved
+            console.log(`Loading initial theme: ${savedTheme}`); // Debug log
+            UI.themeSelector.value = savedTheme;
+            applyTheme(savedTheme);
+        }
+
+        function handleThemeChange() {
+            const selectedTheme = UI.themeSelector.value;
+            applyTheme(selectedTheme);
+        }
+
+        // --- Info Modal Functions ---
+        function showInfoModal(event) {
+            if (!event.target || !UI.infoModal || !UI.infoModalTitle || !UI.infoModalText) return;
+            const id = event.target.dataset.id;
+            const content = infoContent[id];
+            if (content) {
+                UI.infoModalTitle.textContent = content.title;
+                UI.infoModalText.innerHTML = content.text.replace(/\n/g, '<br>'); // Allow basic HTML like <br>, <strong>
+                UI.infoModal.style.display = 'flex';
+            } else {
+                console.warn(`No info content found for ID: ${id}`);
+                 UI.infoModalTitle.textContent = "Info Not Found";
+                 UI.infoModalText.textContent = `Details for element ID '${id}' are missing.`;
+                 UI.infoModal.style.display = 'flex';
+            }
+        }
+        function hideInfoModal() { if (UI.infoModal) UI.infoModal.style.display = 'none'; }
+
+        // --- Utility Functions ---
+        function hexToRgba(hex, alpha = 1) {
+            // Improved robustness
+            if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha * 0.1})`;
+            let c;
+            if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+                c = hex.substring(1).split('');
+                if (c.length == 3) { c = [c[0], c[0], c[1], c[1], c[2], c[2]]; }
+                c = '0x' + c.join('');
+                // Ensure result is valid numbers
+                const r = (c >> 16) & 255;
+                const g = (c >> 8) & 255;
+                const b = c & 255;
+                if ([r, g, b].some(isNaN)) return `rgba(0,0,0,${alpha * 0.1})`;
+                return `rgba(${r},${g},${b},${alpha})`;
+            }
+            console.warn(`Invalid hex color: ${hex}. Returning default transparent.`);
+            return `rgba(0,0,0,${alpha * 0.1})`;
+        }
+
+        // --- Initialize App ---
+        try {
+            // Populate Bus Selection
+            if (UI.busSelect) {
+                for (let i = 1; i <= 33; i++) { UI.busSelect.appendChild(new Option(`Bus ${i}`, i)); }
+            } else { console.error("Bus select dropdown not found."); }
+
+            loadInitialTheme(); // Load theme first
+            initializeCharts(); // Then initialize charts with correct theme
+            setupEventListeners(); // Then setup listeners
+            handleChargingLogicChange(); // Set initial visibility
+            updateSelectedEvCount();
+            updateFleetStatsDisplay(); // Includes initial capacity chart update
+
+            if (UI.busPeakTbody) UI.busPeakTbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: var(--text-secondary);">Run simulation...</td></tr>';
+            if (UI.interpretationArea) UI.interpretationArea.innerHTML = '<p>Adjust parameters and click "Run Simulation" to see results and interpretation.</p>';
+            showStatus("Ready to run simulation.", "info");
+            console.log("UI Initialization complete."); // Debug log
+
+        } catch (error) {
+             console.error("Error during UI Initialization:", error);
+             alert("A critical error occurred while initializing the page. Please check the console (F12) for details.");
+             // Display error to user more visibly if possible
+             const body = document.querySelector('body');
+             if (body) {
+                body.innerHTML = `<div style="padding: 20px; color: red; font-family: sans-serif;"><h1>Initialization Error</h1><p>Could not initialize the application UI. Please check the browser console (F12) for specific errors.</p><pre>${error.stack || error}</pre></div>`;
+             }
+        }
+
+    }); // End of DOMContentLoaded
+    </script>
+
+</body>
+</html>

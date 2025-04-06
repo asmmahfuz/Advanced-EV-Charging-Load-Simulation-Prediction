@@ -1,0 +1,18 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VS Code settings
+.vscode/
+
+# Optional: If your generated CSV is huge and easily reproducible
+# training_data.csv
+
+# Optional: IDE files (add others if you use them)
+.idea/
+*.DS_Store
