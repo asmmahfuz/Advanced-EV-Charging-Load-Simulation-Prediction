@@ -52,20 +52,19 @@ The development followed these key stages:
 
 ## Project Structure
 
-.
-├── venv/ # Virtual environment files (auto-generated)
-├── templates/
-│ └── index.html # Main frontend HTML, CSS, and JavaScript UI
-├── app.py # Flask backend server, API endpoint, and orchestration logic
-├── simulation_engine.py # Contains data loading/preprocessing AND detailed simulation functions
-├── generate_data.py # [Offline Use] Script to generate training_data.csv using simulation_engine
-├── train_model.py # [Offline Use] Script to train ML model from training_data.csv
-├── EVs_cases_1800_EVs_...xlsx # Source dataset from IEEE
-├── ev_load_predictor.joblib # [Generated Artifact] Saved pre-trained ML model
-├── scaler.joblib # [Generated Artifact] Saved feature scaler for ML model
-├── training_data.csv # [Generated Artifact] Data used for ML training
-├── requirements.txt # Python package dependencies for running the app
-└── README.md # This file
+* **`venv/`**: (Auto-generated) Virtual environment files.
+* **`templates/`**:
+    * `index.html`: Main frontend HTML, CSS, and JavaScript UI.
+* **`app.py`**: Flask backend server, API endpoint, and orchestration logic.
+* **`simulation_engine.py`**: Data loading/preprocessing AND detailed simulation functions.
+* **`generate_data.py`**: [Offline Use] Script to generate `training_data.csv` using `simulation_engine`.
+* **`train_model.py`**: [Offline Use] Script to train ML model from `training_data.csv`.
+* **`EVs_cases_1800_EVs_...xlsx`**: Source dataset from IEEE.
+* **`ev_load_predictor.joblib`**: [Generated Artifact] Saved pre-trained ML model.
+* **`scaler.joblib`**: [Generated Artifact] Saved feature scaler for ML model.
+* **`training_data.csv`**: [Generated Artifact] Data used for ML training.
+* **`requirements.txt`**: Python package dependencies for running the app.
+* **`README.md`**: This file.
 
 
 ## Prerequisites to Run the Application
